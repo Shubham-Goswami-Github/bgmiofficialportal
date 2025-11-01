@@ -1,5 +1,5 @@
-import React, { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ Added for navigation
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./SpinPage.css";
 
 import Skin1 from "./assets/Skin1.png";
@@ -53,32 +53,55 @@ const dummyWinners = [
   { name: "Simran", reward: "Outfit" },
 ];
 
+// clamp helper
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
 export default function SpinPage() {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
-  const wheelRef = useRef();
-  const navigate = useNavigate(); // ✅ Initialize navigation
+  const [size, setSize] = useState(320); // wheel size (px), responsive
+  const wheelRef = useRef(null);
+  const boxRef = useRef(null);
+  const navigate = useNavigate();
+
+  // ResizeObserver to make wheel responsive to container width
+  useEffect(() => {
+    if (!boxRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        // wheel size clamped for XS to XL screens
+        setSize(Math.round(clamp(w, 220, 520)));
+      }
+    });
+    ro.observe(boxRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const spin = () => {
-    if (spinning) return;
+    if (spinning || !wheelRef.current) return;
     setResult(null);
     setSpinning(true);
-    const segCount = segments.length;
-    const randomIndex = Math.floor(Math.random() * segCount);
-    const degreePer = 360 / segCount;
-    const randomSpin = 360 * 5 + (360 - randomIndex * degreePer - degreePer / 2);
 
-    wheelRef.current.style.transition =
-      "transform 3s cubic-bezier(0.33, 1, 0.68, 1)";
+    const segCount = segments.length;
+    const degreePer = 360 / segCount;
+    const randomIndex = Math.floor(Math.random() * segCount);
+
+    // final position = center of chosen segment under the pointer (top)
+    const finalAngle = (360 - randomIndex * degreePer - degreePer / 2) % 360;
+    const randomSpin = 360 * 5 + finalAngle; // 5 full rotations + landing angle
+
+    wheelRef.current.style.transition = "transform 3s cubic-bezier(0.33, 1, 0.68, 1)";
     wheelRef.current.style.transform = `rotate(${randomSpin}deg)`;
 
     setTimeout(() => {
       setSpinning(false);
       setResult(segments[randomIndex]);
-      wheelRef.current.style.transition = "none";
-      wheelRef.current.style.transform = `rotate(${
-        (360 - randomIndex * degreePer - degreePer / 2) % 360
-      }deg)`;
+      // lock to exact angle without transition (so next spin starts clean)
+      if (wheelRef.current) {
+        wheelRef.current.style.transition = "none";
+        wheelRef.current.style.transform = `rotate(${finalAngle}deg)`;
+      }
     }, 3000);
   };
 
@@ -97,124 +120,126 @@ export default function SpinPage() {
     ].join(" ");
   }
 
-  const size = 320;
+  // geometry from current size
   const center = size / 2;
   const radius = center - borderWidth;
 
-  function getImagePos(i, r = radius * 0.65) {
-    const angle =
-      ((360 / segments.length) * i +
-        360 / segments.length / 2 -
-        90) *
-      (Math.PI / 180);
+  function getImagePos(i, r = radius * 0.62) {
+    const step = 360 / segments.length;
+    const angle = (step * i + step / 2 - 90) * (Math.PI / 180);
     const x = center + r * Math.cos(angle);
     const y = center + r * Math.sin(angle);
-    const deg = (360 / segments.length) * i + 360 / segments.length / 2;
+    const deg = step * i + step / 2;
     return { x, y, deg };
   }
+
+  // pointer geometry relative to wheel size
+  const arrowHalfW = size * (18 / 320);
+  const arrowH = size * (38 / 320);
+  const pointerTopOffset = -arrowH * 0.95;
+  const pointerDotR = size * (10 / 320);
+
+  const imgSize = Math.round(size * 0.2); // keeps images proportional
 
   return (
     <div className="spin-bg" role="main" aria-label="BGMI Spin and Win Portal">
       <div className="spin-container">
         <h1 className="spin-title">BGMI Spin & Win</h1>
         <div className="spin-title-space" />
+
         <div
           className="wheel-svg-wrapper"
+          ref={boxRef}
           aria-live="polite"
           aria-atomic="true"
         >
+          {/* Pointer overlay (responsive) */}
           <svg
             width={size}
-            height={size / 2}
+            height={Math.max(size * 0.18, 50)}
             className="wheel-pointer"
             aria-hidden="true"
             style={{
               position: "absolute",
               left: 0,
-              top: -30,
+              top: pointerTopOffset,
               pointerEvents: "none",
               zIndex: 2,
             }}
           >
             <polygon
-              points={`${center - 18},0 ${center + 18},0 ${center},38`}
+              points={`${center - arrowHalfW},0 ${center + arrowHalfW},0 ${center},${arrowH}`}
               fill={pointerColor}
               stroke="#fff"
-              strokeWidth="3"
+              strokeWidth={Math.max(size * (3 / 320), 2)}
               filter="drop-shadow(0 2px 2px #0008)"
             />
             <circle
               cx={center}
               cy={0}
-              r={10}
+              r={pointerDotR}
               fill="#fffde7"
               stroke="#b8860b"
-              strokeWidth="2"
+              strokeWidth={Math.max(size * (2 / 320), 1.6)}
             />
           </svg>
+
           <div
             className="wheel-svg"
             ref={wheelRef}
-            style={{
-              width: size,
-              height: size,
-              margin: "0 auto",
-            }}
+            style={{ width: size, height: size, margin: "0 auto" }}
           >
             <svg
               width={size}
               height={size}
+              viewBox={`0 0 ${size} ${size}`}
               role="img"
               aria-label="Spin wheel with rewards"
+              preserveAspectRatio="xMidYMid meet"
             >
+              {/* Outer border */}
               <circle
                 cx={center}
                 cy={center}
                 r={center - borderWidth / 2}
                 fill={borderColor}
                 stroke="#fff"
-                strokeWidth="3"
+                strokeWidth={Math.max(size * (3 / 320), 2)}
               />
+
+              {/* Colored segments */}
               {segments.map((seg, i) => {
                 const start = (360 / segments.length) * i - 90;
                 const end = start + 360 / segments.length;
                 return (
                   <path
-                    key={i}
+                    key={`seg-${i}`}
                     d={getArcPath(center, center, radius, start, end)}
                     fill={colors[i % colors.length]}
                     stroke="#fff"
-                    strokeWidth="2"
+                    strokeWidth={Math.max(size * (2 / 320), 1.5)}
                   />
                 );
               })}
+
+              {/* Reward images */}
               {segments.map((seg, i) => {
                 const { x, y, deg } = getImagePos(i);
                 return (
                   <image
-                    key={i}
+                    key={`img-${i}`}
                     href={seg.img}
-                    x={x - 32}
-                    y={y - 32}
-                    width="64"
-                    height="64"
+                    x={x - imgSize / 2}
+                    y={y - imgSize / 2}
+                    width={imgSize}
+                    height={imgSize}
                     transform={`rotate(${-deg},${x},${y})`}
-                    style={{
-                      filter: "drop-shadow(0 2px 6px #0008)",
-                    }}
-                    alt={`Reward ${i + 1}`}
+                    style={{ filter: "drop-shadow(0 2px 6px #0008)" }}
                   />
                 );
               })}
-              <circle
-                cx={center}
-                cy={center}
-                r={38}
-                fill="url(#gold)"
-                stroke={centerStroke}
-                strokeWidth="6"
-                filter="drop-shadow(0 0 8px #ffb30099)"
-              />
+
+              {/* Center button */}
               <defs>
                 <radialGradient id="gold" cx="30%" cy="30%" r="70%">
                   <stop offset="0%" stopColor="#fffde7" />
@@ -222,6 +247,15 @@ export default function SpinPage() {
                   <stop offset="100%" stopColor="#ffb300" />
                 </radialGradient>
               </defs>
+              <circle
+                cx={center}
+                cy={center}
+                r={Math.max(size * (38 / 320), 26)}
+                fill="url(#gold)"
+                stroke={centerStroke}
+                strokeWidth={Math.max(size * (6 / 320), 4)}
+                filter="drop-shadow(0 0 8px #ffb30099)"
+              />
             </svg>
           </div>
         </div>
@@ -237,7 +271,7 @@ export default function SpinPage() {
           {spinning ? "Spinning..." : "SPIN"}
         </button>
 
-        {/* ✅ Popup with Redirect */}
+        {/* Result Popup */}
         {result && (
           <div
             className="popup-overlay"
@@ -253,7 +287,7 @@ export default function SpinPage() {
                 className="collect-btn"
                 onClick={() => {
                   setResult(null);
-                  navigate("/login"); // ✅ Redirect to login.js page
+                  navigate("/login");
                 }}
                 aria-label="Collect your reward"
               >
@@ -263,15 +297,10 @@ export default function SpinPage() {
           </div>
         )}
 
-        {/* Dummy Winners Marquee */}
-        <div
-          className="winners-marquee"
-          role="region"
-          aria-live="polite"
-          aria-label="Recent winners"
-        >
+        {/* Winners Marquee */}
+        <div className="winners-marquee" role="region" aria-live="polite" aria-label="Recent winners">
           <div className="marquee-content">
-            {dummyWinners.map((winner, idx) => (
+            {dummyWinners.concat(dummyWinners).map((winner, idx) => (
               <span key={idx} className="winner-item">
                 <b>{winner.name}</b> won <span>{winner.reward}</span>
               </span>
