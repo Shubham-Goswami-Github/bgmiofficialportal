@@ -1,0 +1,80 @@
+/* BGMI Login Page Styles */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', 'Arial', sans-serif;
+  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+  min-height: 100vh;
+}
+
+.bgmi-login-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.bgmi-title {
+  color: #FFD700;
+  font-family: 'Arial Black', sans-serif;
+  margin-bottom: 20px;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 8px #000;
+}
+
+.bgmi-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 320px;
+  background: rgba(34, 34, 34, 0.85);
+  padding: 30px 25px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.bgmi-input {
+  padding: 12px;
+  font-size: 17px;
+  border-radius: 6px;
+  border: 1.5px solid #FFD700;
+  background: #232526;
+  color: #FFD700;
+  outline: none;
+  transition: border 0.2s;
+}
+
+.bgmi-input:focus {
+  border: 2px solid #ffb300;
+}
+
+.bgmi-button {
+  padding: 12px;
+  font-size: 17px;
+  background: #FFD700;
+  color: #232526;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  letter-spacing: 1px;
+  transition: background 0.2s;
+}
+
+.bgmi-button:hover {
+  background: #ffb300;
+}
+
+.bgmi-success {
+  color: #00e676;
+  margin-top: 12px;
+  font-weight: bold;
+  text-shadow: 1px 1px 4px #000;
+}
+.bgmi-error {
+  color: #ff4d4f;
+  margin-top: 10px;
+  font-weight: 600;
+}
